@@ -212,7 +212,8 @@ function renderGraph(dist, volume, filter) {
             title: {
                 text: 'Gain (dB)',
                 font: { size: 8 } // Adjust y-axis title font size if needed
-            }
+            },
+            range: [-60, 60] // Fixed Y-axis range
         },
         legend: {
             font: {
