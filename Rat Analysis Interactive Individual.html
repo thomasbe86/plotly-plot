@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProCo Rat Analysis Interactive Individual</title>
+    <title>RhPf Electronics ProCo Rat Analysis Interactive Individual</title>
     <meta name="description" content="Interactive analysis tool for the ProCo Rat.">
     <meta name="author" content="RhPf Electronics">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -194,7 +194,7 @@ function renderGraph(dist, volume, filter) {
         { x: frequency, y: filterPositions[filter], type: 'scatter', mode: 'lines', name: `Filter @ ${filter}%` }
     ], {
         title: {
-            text: `ProCo Rat - Dist: ${dist}% | Volume: ${volume}% | Filter: ${filter}%`,
+            text: `<a href='https://rhpfelectronics.com/' target='_blank'>RhPf Electronics</a> - ProCo Rat - Dist: ${dist}% | Volume: ${volume}% | Filter: ${filter}%`,
             font: {
                 size: 8 // Adjust title font size here
             }
