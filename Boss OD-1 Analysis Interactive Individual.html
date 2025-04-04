@@ -235,15 +235,32 @@ function addKnobListeners(knobKey) {
         const rect = element.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
+	document.body.style.overflow = 'hidden';
 
-        const moveEvent = (e) => {
-            const moveClientX = isTouch ? e.touches[0].clientX : e.clientX;
-            const moveClientY = isTouch ? e.touches[0].clientY : e.clientY;
-            const dx = moveClientX - cx;
-            const dy = moveClientY - cy;
-            const deltaAngle = Math.atan2(dy, dx) * (180 / Math.PI) + 90 - knob.angle;
-            updateKnob(knob, deltaAngle, pointerId, positions, (angle) => (knob.angle = angle));
-        };
+const moveEvent = (e) => {
+    const moveClientX = isTouch ? e.touches[0].clientX : e.clientX;
+    const moveClientY = isTouch ? e.touches[0].clientY : e.clientY;
+    const dx = moveClientX - cx;
+    const dy = moveClientY - cy;
+
+    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    angle = (angle + 360) % 360;
+
+    if (angle >= 134 || angle <= 46) {
+        if (angle <= 46) angle += 360;
+
+        let newKnobAngle = angle - 135; // normalized 0–270°
+        newKnobAngle = Math.max(0, Math.min(272, newKnobAngle)); // allow slight overshoot
+
+        // Snap to exact min/max
+        if (newKnobAngle < 2) newKnobAngle = 0;
+        if (newKnobAngle > 268) newKnobAngle = 270;
+
+        const desiredAngle = newKnobAngle - 135; // -135 to +135
+        const delta = desiredAngle - knob.angle;
+        updateKnob(knob, delta, pointerId, positions, (a) => (knob.angle = a));
+    }
+};
 
         const endEvent = () => {
             document.removeEventListener(isTouch ? "touchmove" : "mousemove", moveEvent);
