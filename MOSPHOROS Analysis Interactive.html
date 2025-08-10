@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mosphoros Analysis Interactive Individual</title>
+    <meta name="description" content="Interactive analysis tool for the Mosphoros Bringer of Warmth.">
+    <meta name="author" content="RhPf Electronics">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script>
+        if (!window.Plotly) {
+            document.write('<script src="/path-to-local-plotly/plotly-latest.min.js"><\/script>');
+        }
+    </script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: row; /* Stack pedal and graph horizontally */
+            justify-content: left;
+            align-items: top;
+            margin: 0;
+            height: auto;
+        }
+
+        #pedal-container {
+            width: 100%; /* Scale pedal container to fit the viewport */
+            height: 100vh; /* Maintain aspect ratio */
+            margin: 0;
+        }
+
+        #pedal-svg {
+            width: 100%; /* Make the SVG scale with the container */
+            height: 100vh; /* Maintain aspect ratio */
+            margin: 0;
+        }
+
+        #graph {
+            width: 100%; /* Take up most of the width */
+            height: 100vh; /* Dynamically scale height relative to the viewport */
+            margin: 0; /* Add some spacing between graph and pedal */
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Pedal with Knobs -->
+    <div id="pedal-container">
+        <svg id="pedal-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1884 3600">
+            <!-- Background Image -->
+            <image href="https://thomasbe86.github.io/plotly-plot/MOSPHOROS-Interactive-Graph-Model.png" x="0" y="0" width="1884" height="3600" />
+<g id="knob-level" transform="translate(1540, 660)">
+    <circle cx="0" cy="0" r="170" fill="#FFF0CA" stroke="none" stroke-width="3" />
+    <line id="level-pointer" x1="0" y1="0" x2="0" y2="-150" stroke="#000" stroke-width="15" stroke-linecap="round" />
+</g>
+
+
+<g id="knob-bass" transform="translate(345, 1220)">
+    <circle cx="0" cy="0" r="100" fill="#000" stroke="#000" stroke-width="3" />
+    <line id="bass-pointer" x1="0" y1="0" x2="0" y2="-100" stroke="#ffffff" stroke-width="15" stroke-linecap="round" />
+</g>
+
+<g id="knob-drive" transform="translate(345, 660)">
+    <circle cx="0" cy="0" r="170" fill="#FFF0CA" stroke="none" stroke-width="3" />
+    <line id="drive-pointer" x1="0" y1="0" x2="0" y2="-150" stroke="#000" stroke-width="15" stroke-linecap="round" />
+</g>
+
+<g id="knob-treble" transform="translate(1540, 1220)">
+    <circle cx="0" cy="0" r="100" fill="#000" stroke="#000" stroke-width="3" />
+    <line id="treble-pointer" x1="0" y1="0" x2="0" y2="-100" stroke="#ffffff" stroke-width="15" stroke-linecap="round" />
+</g>
+        </svg>
+    </div>
+
+    <!-- Graph -->
+    <div id="graph"></div>
+
+    <script>
+        // Ensure Plotly resizes with window changes
+        window.addEventListener('resize', () => {
+            Plotly.Plots.resize(document.getElementById('graph'));
+        });
+    </script>
+
+    <script>
+        // Frequency Data
+        const frequency = [
+  20.0, 25.1785, 31.6979, 39.9052, 50.2377, 63.2456, 79.6214, 100.2374, 126.1915, 158.8656,
+  200.0, 251.7851, 316.9786, 399.0525, 502.3773, 632.4555, 796.2143, 1002.3745, 1261.9147, 1588.6565,
+  2000.0, 2517.8508, 3169.7864, 3990.5246, 5023.7729, 6324.5553, 7962.1434, 10023.7447, 12619.1469, 15886.5647,
+  20000.0
+        ];
+
+let sweepData = [];
+const knobState = {
+    "drive": 5,
+    "bass": 5,
+    "treble": 5
+};
+
+// Convert angle to value index (0 to 10)
+function angleToIndex(angle) {
+    const clamped = Math.max(-135, Math.min(135, angle));
+    return Math.round(((clamped + 135) / 270) * 10); // 0 to 10
+}
+
+
+
+
+function loadDatasetAndPlot() {
+    const datasetURL = `https://thomasbe86.github.io/plotly-plot/mosphoros.json`;
+    fetch(datasetURL)
+        .then(res => {
+            if (!res.ok) throw new Error("HTTP status " + res.status);
+            return res.json();
+        })
+        .then(data => {
+            sweepData = data;
+            updatePlot();
+        })
+        .catch(err => {
+            console.error("Error fetching or parsing JSON:", err);
+        });
+}
+
+
+function updatePlot() {
+    const driveValue = knobState.drive;
+    const bassValue = knobState.bass;
+    const trebleValue = knobState.treble;
+
+    const match = sweepData.find(entry =>
+        entry.positions.drive === driveValue &&
+        entry.positions.bass === bassValue &&
+        entry.positions.treble === trebleValue
+    );
+
+    if (!match) {
+        console.warn("No matching data for", knobState);
+        return;
+    }
+
+const plotData = [{
+    x: frequency,
+    y: match.data,
+    type: 'scatter',
+    mode: 'lines',
+    name: `Combined @ Drive: ${driveValue}, Bass: ${bassValue}, Treble: ${trebleValue}`,
+    line: {
+        color: 'red',
+        width: 3,
+        shape: 'spline'  // <--- This smooths the line
+    }
+}];
+
+    Plotly.newPlot('graph', plotData, {
+        title: {
+            text: `<a href='https://rhpfelectronics.com/rhpf-electronics-handmade-guitar-pedals-in-switzerland/rhpf-nerd-lab/' target='_blank'>RhPf Electronics</a> – Mosphoros - Bringer of Warmth – Drive: ${driveValue} | Bass: ${bassValue} | Treble: ${trebleValue}`,
+            font: { size: 8 }
+        },
+        xaxis: {
+            title: {
+                text: 'Frequency (Hz)',
+                font: { size: 8 }
+            },
+            type: 'log',
+            tickvals: [20, 32, 64, 128, 256, 512, 1000, 2000, 4000, 8000, 16000, 20000],
+            ticktext: ["20", "32", "64", "128", "256", "512", "1k", "2k", "4k", "8k", "16k", "20k"]
+        },
+        yaxis: {
+            title: {
+                text: 'Gain (dB)',
+                font: { size: 8 }
+            },
+            range: [-15, 55] // You can adjust based on your sweep data
+        },
+        legend: {
+            font: { size: 8 }
+        },
+        margin: { t: 40, l: 50, r: 20, b: 50 }
+    });
+}
+
+
+function updatePointer(pointerId, angle) {
+    document.getElementById(pointerId).setAttribute('transform', `rotate(${angle} 0 0)`);
+}
+
+const knobs = {
+    drive: { element: document.getElementById('knob-drive'), pointerId: 'drive-pointer', angle: 0 },
+    bass: { element: document.getElementById('knob-bass'), pointerId: 'bass-pointer', angle: 0 },
+    treble: { element: document.getElementById('knob-treble'), pointerId: 'treble-pointer', angle: 0 },
+};
+
+function updateKnob(knobKey, angle) {
+    const knob = knobs[knobKey];
+    knob.angle = angle;
+    updatePointer(knob.pointerId, angle);
+    knobState[knobKey] = angleToIndex(angle);
+    updatePlot();
+}
+
+function addKnobListeners(knobKey) {
+    const knob = knobs[knobKey];
+    const { element } = knob;
+
+    const startEvent = (event) => {
+        event.preventDefault();
+        const isTouch = event.type === "touchstart";
+        const clientX = isTouch ? event.touches[0].clientX : event.clientX;
+        const clientY = isTouch ? event.touches[0].clientY : event.clientY;
+
+        const rect = element.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+
+const moveEvent = (e) => {
+    const moveClientX = isTouch ? e.touches[0].clientX : e.clientX;
+    const moveClientY = isTouch ? e.touches[0].clientY : e.clientY;
+    const dx = moveClientX - cx;
+    const dy = moveClientY - cy;
+
+    let angle = Math.atan2(dy, dx) * (180 / Math.PI); // Full -180 to 180
+    angle = angle < -135 ? -135 : angle > 135 ? 135 : angle; // Clamp to knob range
+
+    // Update rotation and knob logic
+    updateKnob(knobKey, angle);
+
+};
+
+
+        const endEvent = () => {
+            document.removeEventListener(isTouch ? "touchmove" : "mousemove", moveEvent);
+            document.removeEventListener(isTouch ? "touchend" : "mouseup", endEvent);
+        };
+
+        document.addEventListener(isTouch ? "touchmove" : "mousemove", moveEvent);
+        document.addEventListener(isTouch ? "touchend" : "mouseup", endEvent);
+    };
+
+    element.addEventListener("mousedown", startEvent);
+    element.addEventListener("touchstart", startEvent, { passive: false });
+
+    element.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        const delta = event.deltaY > 0 ? -15 : 15;
+        let newAngle = knob.angle + delta;
+        newAngle = Math.max(-135, Math.min(135, newAngle));
+        updateKnob(knobKey, newAngle);
+    });
+}
+
+// Init
+Object.keys(knobs).forEach(k => {
+    updatePointer(knobs[k].pointerId, knobs[k].angle);
+    addKnobListeners(k);
+});
+loadDatasetAndPlot();
+</script>
+</body>
+</html>
