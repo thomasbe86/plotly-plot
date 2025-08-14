@@ -62,193 +62,211 @@
     <circle cx="0" cy="0" r="170" fill="#FFF0CA" stroke="none" stroke-width="3" />
     <line id="gainigf1-pointer" x1="0" y1="0" x2="0" y2="-150" stroke="#000" stroke-width="15" stroke-linecap="round" />
 </g>
+
+<g id="knob-levelacth" transform="translate(1540, 1220)">
+    <circle cx="0" cy="0" r="100" fill="#000" stroke="#000" stroke-width="3" />
+    <line id="levelacth-pointer" x1="0" y1="0" x2="0" y2="-100" stroke="#ffffff" stroke-width="15" stroke-linecap="round" />
+</g>
+
+<g id="knob-levelgh" transform="translate(950, 940)">
+    <circle cx="0" cy="0" r="100" fill="#000" stroke="#000" stroke-width="3" />
+    <line id="levelgh-pointer" x1="0" y1="0" x2="0" y2="-100" stroke="#ffffff" stroke-width="15" stroke-linecap="round" />
+</g>
+
+<g id="knob-leveligf1" transform="translate(345, 1220)">
+    <circle cx="0" cy="0" r="100" fill="#000" stroke="#000" stroke-width="3" />
+    <line id="leveligf1-pointer" x1="0" y1="0" x2="0" y2="-100" stroke="#ffffff" stroke-width="15" stroke-linecap="round" />
+</g>
         </svg>
     </div>
 
     <!-- Graph -->
     <div id="graph"></div>
 
-    <script>
-        // Ensure Plotly resizes with window changes
-        window.addEventListener('resize', () => {
-            Plotly.Plots.resize(document.getElementById('graph'));
-        });
-    </script>
+<script>
+  // Resize Plotly on window changes
+  window.addEventListener('resize', () => {
+    Plotly.Plots.resize(document.getElementById('graph'));
+  });
 
-    <script>
-        // Frequency Data
-        const frequency = [
-  20.0, 25.1785, 31.6979, 39.9052, 50.2377, 63.2456, 79.6214, 100.2374, 126.1915, 158.8656,
-  200.0, 251.7851, 316.9786, 399.0525, 502.3773, 632.4555, 796.2143, 1002.3745, 1261.9147, 1588.6565,
-  2000.0, 2517.8508, 3169.7864, 3990.5246, 5023.7729, 6324.5553, 7962.1434, 10023.7447, 12619.1469, 15886.5647,
-  20000.0
-        ];
+  // X‑axis (same as yours)
+  const frequency = [
+    20.0, 25.1785, 31.6979, 39.9052, 50.2377, 63.2456, 79.6214, 100.2374, 126.1915, 158.8656,
+    200.0, 251.7851, 316.9786, 399.0525, 502.3773, 632.4555, 796.2143, 1002.3745, 1261.9147, 1588.6565,
+    2000.0, 2517.8508, 3169.7864, 3990.5246, 5023.7729, 6324.5553, 7962.1434, 10023.7447, 12619.1469, 15886.5647,
+    20000.0
+  ];
 
-let sweepData = [];
-const knobState = {
-    "gainacth": 5,
-    "gaingh": 5,
-    "gainigf1": 5
-};
+  // Data containers
+  let gainData  = []; // entries like { positions:{ gainacth, gaingh, gainigf1 }, data:[...] }
+  let levelData = []; // entries like { positions:{ levelacth, levelgh, leveligf1 }, data:[...] }
 
-// Convert angle to value index (0 to 10)
-function angleToIndex(angle) {
+  // Knob state (0..10)
+  const knobState = {
+    gainacth: 5, gaingh: 5, gainigf1: 5,
+    levelacth: 5, levelgh: 5, leveligf1: 5
+  };
+
+  // Angle (-135..135) -> index (0..10)
+  function angleToIndex(angle) {
     const clamped = Math.max(-135, Math.min(135, angle));
-    return Math.round(((clamped + 135) / 270) * 10); // 0 to 10
-}
+    return Math.round(((clamped + 135) / 270) * 10);
+  }
 
+  // Load both datasets (works if your files are .json or .js with JSON content)
+  function loadDatasetsAndPlot() {
+    const gainURL  = 'https://thomasbe86.github.io/plotly-plot/TRI-HORMONIC-PHALANXGAIN.json';
+    const levelURL = 'https://thomasbe86.github.io/plotly-plot/TRI-HORMONIC-PHALANXLEVEL.json';
 
+    Promise.all([fetch(gainURL), fetch(levelURL)])
+      .then(([r1, r2]) => {
+        if (!r1.ok) throw new Error("GAIN HTTP " + r1.status);
+        if (!r2.ok) throw new Error("LEVEL HTTP " + r2.status);
+        return Promise.all([r1.json(), r2.json()]);
+      })
+      .then(([gData, lData]) => {
+        gainData  = gData;
+        levelData = lData;
+        updatePlot();
+      })
+      .catch(err => console.error("Dataset load error:", err));
+  }
 
-
-function loadDatasetAndPlot() {
-    const datasetURL = `https://thomasbe86.github.io/plotly-plot/TRI-HORMONIC-PHALANX.json`;
-    fetch(datasetURL)
-        .then(res => {
-            if (!res.ok) throw new Error("HTTP status " + res.status);
-            return res.json();
-        })
-        .then(data => {
-            sweepData = data;
-            updatePlot();
-        })
-        .catch(err => {
-            console.error("Error fetching or parsing JSON:", err);
-        });
-}
-
-
-function updatePlot() {
-    const gainacthValue = knobState.gainacth;
-    const gainghValue = knobState.gaingh;
-    const gainigf1Value = knobState.gainigf1;
-
-    const match = sweepData.find(entry =>
-        entry.positions.gainacth === gainacthValue &&
-        entry.positions.gaingh === gainghValue &&
-        entry.positions.gainigf1 === gainigf1Value
+  // Finders that only check the fields that exist in each file
+  function findGainMatch(gainacth, gaingh, gainigf1) {
+    return gainData.find(entry =>
+      entry.positions &&
+      entry.positions.gainacth === gainacth &&
+      entry.positions.gaingh   === gaingh &&
+      entry.positions.gainigf1 === gainigf1
     );
+  }
 
-    if (!match) {
-        console.warn("No matching data for", knobState);
-        return;
+  function findLevelMatch(levelacth, levelgh, leveligf1) {
+    return levelData.find(entry =>
+      entry.positions &&
+      entry.positions.levelacth === levelacth &&
+      entry.positions.levelgh   === levelgh &&
+      entry.positions.leveligf1 === leveligf1
+    );
+  }
+
+  function updatePlot() {
+    const { gainacth, gaingh, gainigf1, levelacth, levelgh, leveligf1 } = knobState;
+
+    const gainMatch  = findGainMatch(gainacth, gaingh, gainigf1);
+    const levelMatch = findLevelMatch(levelacth, levelgh, leveligf1);
+
+    if (!gainMatch && !levelMatch) {
+      console.warn('No matches for current knobState:', knobState);
+      return;
     }
 
-const plotData = [{
-    x: frequency,
-    y: match.data,
-    type: 'scatter',
-    mode: 'lines',
-    name: `Combined @ gainacth: ${gainacthValue}, gaingh: ${gainghValue}, gainigf1: ${gainigf1Value}`,
-    line: {
-        color: 'red',
-        width: 3,
-        shape: 'spline'  // <--- This smooths the line
+    const traces = [];
+    if (gainMatch) {
+      traces.push({
+        x: frequency,
+        y: gainMatch.data,
+        type: 'scatter', mode: 'lines',
+        name: `Gains @ ACTH:${gainacth} GH:${gaingh} IGF1:${gainigf1}`,
+        line: { color: 'red', width: 3, shape: 'spline' } // solid
+      });
     }
-}];
+    if (levelMatch) {
+      traces.push({
+        x: frequency,
+        y: levelMatch.data,
+        type: 'scatter', mode: 'lines',
+        name: `Levels @ ACTH:${levelacth} GH:${levelgh} IGF1:${leveligf1}`,
+        line: { color: 'blue', width: 3, dash: 'dash', shape: 'spline' } // dashed
+      });
+    }
 
-    Plotly.newPlot('graph', plotData, {
-        title: {
-            text: `<a href='https://rhpfelectronics.com/rhpf-electronics-handmade-guitar-pedals-in-switzerland/rhpf-nerd-lab/' target='_blank'>RhPf Electronics</a> – Tri-Hormonic Phalanx - Tri-Band Enhancer – Gain ACTH: ${gainacthValue} | Gain GH: ${gainghValue} | Gain IGF1: ${gainigf1Value}`,
-            font: { size: 8 }
-        },
-        xaxis: {
-            title: {
-                text: 'Frequency (Hz)',
-                font: { size: 8 }
-            },
-            type: 'log',
-            tickvals: [20, 32, 64, 128, 256, 512, 1000, 2000, 4000, 8000, 16000, 20000],
-            ticktext: ["20", "32", "64", "128", "256", "512", "1k", "2k", "4k", "8k", "16k", "20k"]
-        },
-        yaxis: {
-            title: {
-                text: 'Gain (dB)',
-                font: { size: 8 }
-            },
-            range: [-15, 55] // You can adjust based on your sweep data
-        },
-        legend: {
-            font: { size: 8 }
-        },
-        margin: { t: 40, l: 50, r: 20, b: 50 }
+    Plotly.newPlot('graph', traces, {
+      title: {
+        text:
+          `<a href='https://rhpfelectronics.com/rhpf-electronics-handmade-guitar-pedals-in-switzerland/rhpf-nerd-lab/' target='_blank'>RhPf Electronics</a> – Tri‑Harmonic Phalanx - Tri-Band Enhancer`,
+        font: { size: 10 }
+      },
+      xaxis: {
+        title: { text: 'Frequency (Hz)', font: { size: 9 } },
+        type: 'log',
+        tickvals: [20,32,64,128,256,512,1000,2000,4000,8000,16000,20000],
+        ticktext: ["20","32","64","128","256","512","1k","2k","4k","8k","16k","20k"]
+      },
+      yaxis: { title: { text: 'Gain (dB)', font: { size: 9 } }, range: [-15, 55] },
+      legend: { font: { size: 9 } },
+      margin: { t: 48, l: 50, r: 20, b: 50 }
     });
-}
+  }
 
-
-function updatePointer(pointerId, angle) {
+  // ---- Knob UI ----
+  function updatePointer(pointerId, angle) {
     document.getElementById(pointerId).setAttribute('transform', `rotate(${angle} 0 0)`);
-}
+  }
 
-const knobs = {
-    gainacth: { element: document.getElementById('knob-gainacth'), pointerId: 'gainacth-pointer', angle: 0 },
-    gaingh: { element: document.getElementById('knob-gaingh'), pointerId: 'gaingh-pointer', angle: 0 },
-    gainigf1: { element: document.getElementById('knob-gainigf1'), pointerId: 'gainigf1-pointer', angle: 0 },
-};
+  const knobs = {
+    gainacth:  { element: document.getElementById('knob-gainacth'),  pointerId: 'gainacth-pointer',  angle: 0 },
+    gaingh:    { element: document.getElementById('knob-gaingh'),    pointerId: 'gaingh-pointer',    angle: 0 },
+    gainigf1:  { element: document.getElementById('knob-gainigf1'),  pointerId: 'gainigf1-pointer',  angle: 0 },
+    levelacth: { element: document.getElementById('knob-levelacth'), pointerId: 'levelacth-pointer', angle: 0 },
+    levelgh:   { element: document.getElementById('knob-levelgh'),   pointerId: 'levelgh-pointer',   angle: 0 },
+    leveligf1: { element: document.getElementById('knob-leveligf1'), pointerId: 'leveligf1-pointer', angle: 0 }
+  };
 
-function updateKnob(knobKey, angle) {
+  function updateKnob(knobKey, angle) {
     const knob = knobs[knobKey];
     knob.angle = angle;
     updatePointer(knob.pointerId, angle);
     knobState[knobKey] = angleToIndex(angle);
     updatePlot();
-}
+  }
 
-function addKnobListeners(knobKey) {
+  function addKnobListeners(knobKey) {
     const knob = knobs[knobKey];
     const { element } = knob;
 
     const startEvent = (event) => {
-        event.preventDefault();
-        const isTouch = event.type === "touchstart";
-        const clientX = isTouch ? event.touches[0].clientX : event.clientX;
-        const clientY = isTouch ? event.touches[0].clientY : event.clientY;
+      event.preventDefault();
+      const isTouch = event.type === "touchstart";
+      const rect = element.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
 
-        const rect = element.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
+      const moveEvent = (e) => {
+        const p = isTouch ? e.touches[0] : e;
+        const dx = p.clientX - cx;
+        const dy = p.clientY - cy;
+        let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        angle = Math.max(-135, Math.min(135, angle));
+        updateKnob(knobKey, angle);
+      };
 
-const moveEvent = (e) => {
-    const moveClientX = isTouch ? e.touches[0].clientX : e.clientX;
-    const moveClientY = isTouch ? e.touches[0].clientY : e.clientY;
-    const dx = moveClientX - cx;
-    const dy = moveClientY - cy;
+      const endEvent = () => {
+        document.removeEventListener(isTouch ? "touchmove" : "mousemove", moveEvent);
+        document.removeEventListener(isTouch ? "touchend" : "mouseup", endEvent);
+      };
 
-    let angle = Math.atan2(dy, dx) * (180 / Math.PI); // Full -180 to 180
-    angle = angle < -135 ? -135 : angle > 135 ? 135 : angle; // Clamp to knob range
-
-    // Update rotation and knob logic
-    updateKnob(knobKey, angle);
-
-};
-
-
-        const endEvent = () => {
-            document.removeEventListener(isTouch ? "touchmove" : "mousemove", moveEvent);
-            document.removeEventListener(isTouch ? "touchend" : "mouseup", endEvent);
-        };
-
-        document.addEventListener(isTouch ? "touchmove" : "mousemove", moveEvent);
-        document.addEventListener(isTouch ? "touchend" : "mouseup", endEvent);
+      document.addEventListener(isTouch ? "touchmove" : "mousemove", moveEvent);
+      document.addEventListener(isTouch ? "touchend" : "mouseup", endEvent);
     };
 
     element.addEventListener("mousedown", startEvent);
     element.addEventListener("touchstart", startEvent, { passive: false });
 
     element.addEventListener("wheel", (event) => {
-        event.preventDefault();
-        const delta = event.deltaY > 0 ? -15 : 15;
-        let newAngle = knob.angle + delta;
-        newAngle = Math.max(-135, Math.min(135, newAngle));
-        updateKnob(knobKey, newAngle);
+      event.preventDefault();
+      const delta = event.deltaY > 0 ? -15 : 15;
+      let newAngle = knob.angle + delta;
+      newAngle = Math.max(-135, Math.min(135, newAngle));
+      updateKnob(knobKey, newAngle);
     });
-}
+  }
 
-// Init
-Object.keys(knobs).forEach(k => {
+  // Init
+  Object.keys(knobs).forEach(k => {
     updatePointer(knobs[k].pointerId, knobs[k].angle);
     addKnobListeners(k);
-});
-loadDatasetAndPlot();
+  });
+  loadDatasetsAndPlot();
 </script>
-</body>
-</html>
