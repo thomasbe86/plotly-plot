@@ -1,0 +1,46 @@
+{
+  "name": "Arbiter Fuzz Face",
+  "title_link": "https://rhpfelectronics.com/rhpf-electronics-handmade-guitar-pedals-in-switzerland/rhpf-nerd-lab/",
+
+  "image": "https://thomasbe86.github.io/plotly-plot/Arbiter%20Fuzz%20Face.png",
+  "imageSize": [1884, 3600],
+  "viewBox": "0 0 1884 3600",
+
+  "data": "https://thomasbe86.github.io/plotly-plot/Arbiter%20Fuzz%20Face.json",
+
+  "yaxis": { "label": "Gain (dB)", "range": [-30, 60] },
+  "xaxis": {
+    "label": "Frequency (Hz)",
+    "type": "log",
+    "tickvals": [20, 32, 64, 128, 256, 512, 1000, 2000, 4000, 8000, 16000, 20000],
+    "ticktext": ["20", "32", "64", "128", "256", "512", "1k", "2k", "4k", "8k", "16k", "20k"]
+  },
+  "line": { "color": "red", "width": 3, "shape": "spline" },
+
+  "knobs": [
+    {
+      "id": "fuzz",
+      "label": "Fuzz",
+      "transform": "translate(1470,1300)",
+      "steps": 11,
+      "minAngle": -135,
+      "maxAngle": 135,
+      "wheelStep": 15,
+      "initIndex": 5,
+      "circle": { "r": 170, "fill": "#000000", "stroke": "none", "strokeWidth": 0 },
+      "pointer": { "length": 150, "stroke": "#ffffff", "strokeWidth": 15, "strokeLinecap": "round" }
+    },
+    {
+      "id": "volume",
+      "label": "Volume",
+      "transform": "translate(470,1300)",
+      "steps": 11,
+      "minAngle": -135,
+      "maxAngle": 135,
+      "wheelStep": 15,
+      "initIndex": 5,
+      "circle": { "r": 170, "fill": "#000000", "stroke": "none", "strokeWidth": 0 },
+      "pointer": { "length": 150, "stroke": "#ffffff", "strokeWidth": 15, "strokeLinecap": "round" }
+    }
+  ]
+}
